@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8 灯控制 · 模拟运行</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#fff; --line:#e3e8ef; --ink:#0f172a; --ink2:#475569;
+    --ink3:#94a3b8; --blue:#2563eb; --amber:#d97706; --green:#059669; --red:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    font-size:15px;line-height:1.7;display:flex;align-items:flex-start;justify-content:center;
+    padding:34px 22px 60px;
+  }
+  .panel{width:100%;max-width:880px}
+  h1{font-size:19px;margin:0 0 4px;letter-spacing:.3px}
+  .sub{font-size:13.5px;color:var(--ink2);margin:0 0 20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;
+        box-shadow:0 2px 10px rgba(15,23,42,.05)}
+
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .lbl{font-size:13.5px;color:var(--ink2);margin-right:2px}
+  .keys{display:flex;gap:7px;flex-wrap:wrap}
+  .key{
+    width:44px;height:44px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;
+    font-size:16px;font-weight:600;color:var(--ink);cursor:pointer;transition:.12s;
+    font-family:'Cascadia Mono',Consolas,monospace;
+  }
+  .key:hover{background:#f1f5f9;transform:translateY(-1px)}
+  .key:active{transform:translateY(0)}
+  .key.on{background:var(--blue);border-color:var(--blue);color:#fff;
+          box-shadow:0 3px 10px rgba(37,99,235,.35)}
+  #numin{width:96px;height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:10px;
+         font-family:'Cascadia Mono',Consolas,monospace;font-size:17px;text-align:center;
+         color:var(--ink)}
+  #numin:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+  .btn{height:44px;padding:0 16px;border:1px solid #cbd5e1;background:#fff;border-radius:10px;
+       cursor:pointer;font-size:14px;color:var(--ink2)}
+  .btn:hover{background:#f1f5f9}
+
+  .lamps{display:grid;grid-template-columns:repeat(8,1fr);gap:12px;margin:28px 0 6px}
+  .lamp{text-align:center}
+  .bulb{
+    width:100%;aspect-ratio:1;max-width:78px;margin:0 auto;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#f8fafc,#cbd5e1);
+    border:2px solid #94a3b8;transition:.18s;
+  }
+  .lamp.on .bulb{
+    background:radial-gradient(circle at 35% 30%,#fffbeb,#fbbf24);
+    border-color:#f59e0b;
+    box-shadow:0 0 0 5px rgba(251,191,36,.22),0 0 30px 8px rgba(251,191,36,.7);
+  }
+  .lamp .no{font-size:12.5px;color:var(--ink3);margin-top:9px}
+  .lamp .addr{font-family:'Cascadia Mono',Consolas,monospace;font-size:13px;color:var(--ink3)}
+  .lamp.on .no,.lamp.on .addr{color:var(--amber);font-weight:700}
+
+  .regs{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;
+        margin-top:24px;padding-top:20px;border-top:1px dashed var(--line)}
+  .reg{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 13px}
+  .reg .k{font-size:12px;color:var(--ink3);display:block;margin-bottom:3px}
+  .reg .v{font-family:'Cascadia Mono',Consolas,monospace;font-size:17px;font-weight:700;color:var(--ink)}
+  .bits{letter-spacing:3px;font-size:16px}
+  .msg{margin-top:14px;font-size:14px;min-height:24px;color:var(--ink2)}
+  .msg.ok{color:var(--green);font-weight:600}
+  .msg.bad{color:var(--red);font-weight:600}
+
+  @media (max-width:720px){
+    .lamps{grid-template-columns:repeat(4,1fr)}
+    body{padding:20px 14px 40px}
+    .card{padding:18px}
+  }
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>8 灯控制 · 模拟运行</h1>
+  <p class="sub">输入 1~8，对应编号的灯点亮。输入范围外的数 → 全部熄灭。</p>
+
+  <div class="card">
+    <div class="row">
+      <span class="lbl">输入数字</span>
+      <div class="keys" id="keys"></div>
+      <input id="numin" type="text" value="1" inputmode="numeric" autocomplete="off">
+      <button class="btn" id="clr">全灭</button>
+    </div>
+
+    <div class="lamps" id="lamps"></div>
+
+    <div class="regs">
+      <div class="reg"><span class="k">D0　输入的数字</span><span class="v" id="rD0">1</span></div>
+      <div class="reg"><span class="k">D1　位号 = D0 - 1</span><span class="v" id="rD1">0</span></div>
+      <div class="reg"><span class="k">M0~M7　译码结果</span><span class="v bits" id="rM">10000000</span></div>
+      <div class="reg"><span class="k">M100　范围允许</span><span class="v" id="rM100">ON</span></div>
+    </div>
+
+    <div class="msg" id="msg"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var keysBox = document.getElementById('keys');
+  var lampsBox = document.getElementById('lamps');
+  var numIn = document.getElementById('numin');
+  var msg = document.getElementById('msg');
+  var keyEls = [], lampEls = [];
+
+  for (var n = 1; n <= 8; n++){
+    (function(n){
+      var b = document.createElement('button');
+      b.className = 'key';
+      b.type = 'button';
+      b.textContent = n;
+      b.onclick = function(){ numIn.value = n; run(); };
+      keysBox.appendChild(b);
+      keyEls.push(b);
+    })(n);
+  }
+
+  for (var m = 0; m < 8; m++){
+    (function(m){
+      var d = document.createElement('div');
+      d.className = 'lamp';
+      var bulb = document.createElement('div'); bulb.className = 'bulb';
+      var no   = document.createElement('div'); no.className = 'no';   no.textContent = '第 ' + (m + 1) + ' 个';
+      var ad   = document.createElement('div'); ad.className = 'addr'; ad.textContent = 'Y' + m;
+      d.appendChild(bulb); d.appendChild(no); d.appendChild(ad);
+      lampsBox.appendChild(d);
+      lampEls.push(d);
+    })(m);
+  }
+
+  function run(){
+    var raw = String(numIn.value).trim();
+    var v = Number(raw);
+    var valid = raw !== '' && isFinite(v) && Math.floor(v) === v && v >= 1 && v <= 8;
+
+    for (var i = 0; i < 8; i++) lampEls[i].classList.toggle('on', valid && v === i + 1);
+    for (var k = 0; k < 8; k++) keyEls[k].classList.toggle('on', valid && (k + 1) === v);
+
+    var bits = '00000000';
+    if (valid){
+      var arr = bits.split('');
+      arr[8 - v] = '1';
+      bits = arr.join('');
+    }
+    document.getElementById('rD0').textContent   = raw === '' ? '—' : raw;
+    document.getElementById('rD1').textContent   = valid ? String(v - 1) : '—';
+    document.getElementById('rM').textContent    = bits;
+    document.getElementById('rM100').textContent = valid ? 'ON' : 'OFF';
+
+    if (valid){
+      msg.className = 'msg ok';
+      msg.textContent = 'D0 = ' + v + ' → 第 ' + v + ' 个灯（Y' + (v - 1) + '）点亮，其余全灭。';
+    } else if (raw === ''){
+      msg.className = 'msg';
+      msg.textContent = '请输入一个数字。';
+    } else {
+      msg.className = 'msg bad';
+      msg.textContent = '输入 ' + raw + ' 超出 1~8 → M100 = OFF → 8 个灯全部熄灭。';
+    }
+  }
+
+  document.getElementById('clr').onclick = function(){
+    numIn.value = '';
+    run();
+    msg.className = 'msg';
+    msg.textContent = '已全灭。';
+  };
+  numIn.addEventListener('input', run);
+  numIn.addEventListener('keydown', function(e){ if (e.key === 'Enter') run(); });
+
+  run();
+})();
+</script>
+</body>
+</html>
